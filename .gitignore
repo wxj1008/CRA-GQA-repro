@@ -1,0 +1,38 @@
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+
+# ===== Data & Models =====
+data/
+datasets/
+*.h5
+*.pth
+*.pt
+*.bin
+*.safetensors
+*.ckpt
+
+# ===== Videos =====
+*.mp4
+*.avi
+*.mkv
+*.mov
+
+# ===== HuggingFace / Torch cache =====
+.cache/
+.cache/huggingface/
+torch_cache/
+
+# ===== Logs & outputs =====
+logs/
+outputs/
+wandb/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
