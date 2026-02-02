@@ -36,3 +36,18 @@ wandb/
 # ===== OS =====
 .DS_Store
 Thumbs.db
+
+# generated artifacts
+output/
+outputs/
+runs/
+checkpoints/
+ckpt/
+*.pth
+*.pt
+*.bin
+*.safetensors
+*.h5
+*.npy
+*.npz
+*.log

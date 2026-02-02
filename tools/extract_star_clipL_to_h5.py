@@ -7,6 +7,8 @@ import pandas as pd
 from tqdm import tqdm
 import torch
 import open_clip
+from PIL import Image
+
 
 STAR_DIR = "data/star"
 VIDEO_DIR = os.path.join(STAR_DIR, "Charades_v1_480")
@@ -74,9 +76,10 @@ def main():
                 frames.append(frame)
             cap.release()
 
-            imgs = torch.stack(
-                [preprocess(torch.from_numpy(f).permute(2, 0, 1)) for f in frames]
-            ).to(device)
+            imgs = [preprocess(Image.fromarray(f)) for f in frames]
+            imgs = torch.stack(imgs, dim=0).to(device)
+            imgs = imgs.to(dtype=next(model.parameters()).dtype)
+
 
             emb = model.encode_image(imgs)
             emb = torch.nn.functional.normalize(emb, dim=-1)

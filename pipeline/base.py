@@ -14,6 +14,8 @@ from utils.misc.misc import compute_a2v
 class BasePipeline(object):
     def __init__(self, cfgs) -> None:
         self.cfgs = cfgs
+        self.args = cfgs
+
         # set cuda device
         os.environ['CUDA_VISIBLE_DEVICES'] = cfgs["misc"]["cuda"]
         os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -115,28 +117,42 @@ class BasePipeline(object):
 
             if epoch % self.save_period == 0:
                 self._save_checkpoint(epoch, save_best=best)
-        self._print_best()
-        self._print_best_to_file()
+    
+        try:
+          self._print_best()
+        except Exception as e:
+          print("Skip _print_best due to:", repr(e))
 
+        try:
+          self._print_best_to_file()
+        except Exception as e:
+          print("Skip _print_best_to_file due to:", repr(e))
+ 
     def _print_best_to_file(self):
-        crt_time = time.asctime(time.localtime(time.time()))
-        self.best_recorder['val']['time'] = crt_time
-        self.best_recorder['test']['time'] = crt_time
-        self.best_recorder['val']['seed'] = self.args["seed"]
-        self.best_recorder['test']['seed'] = self.args["seed"]
-        self.best_recorder['val']['best_model_from'] = 'val'
-        self.best_recorder['test']['best_model_from'] = 'test'
-
-        if not os.path.exists(self.args["record_dir"]):
-            os.makedirs(self.args["record_dir"])
-        record_path = os.path.join(self.args["record_dir"], self.args["dataset_name"] + '.csv')
-        if not os.path.exists(record_path):
-            record_table = pd.DataFrame()
-        else:
-            record_table = pd.read_csv(record_path)
-        record_table = record_table.append(self.best_recorder['val'], ignore_index=True)
-        record_table = record_table.append(self.best_recorder['test'], ignore_index=True)
-        record_table.to_csv(record_path, index=False)
+       crt_time = time.asctime(time.localtime(time.time()))
+       seed = self.cfgs.get("misc", {}).get("seed", None)
+       record_dir = self.cfgs.get("stat", {}).get("record_dir", "./output")
+       dataset_name = self.cfgs.get("dataset", {}).get("name", "dataset")
+       running_name = self.cfgs.get("misc", {}).get("running_name", "run")
+       self.best_recorder['val']['time'] = crt_time
+       self.best_recorder['test']['time'] = crt_time
+       if seed is not None:
+          self.best_recorder['val']['seed'] = seed
+          self.best_recorder['test']['seed'] = seed
+       self.best_recorder['val']['best_model_from'] = 'val'
+       self.best_recorder['test']['best_model_from'] = 'test'
+       self.best_recorder['val']['running_name'] = running_name
+       self.best_recorder['test']['running_name'] = running_name
+       os.makedirs(record_dir, exist_ok=True)
+       record_path = os.path.join(record_dir, f"{dataset_name}.csv")
+       if not os.path.exists(record_path):
+          record_table = pd.DataFrame()
+       else:
+          record_table = pd.read_csv(record_path)
+       record_table = pd.concat([record_table, pd.DataFrame([self.best_recorder['val'], self.best_recorder['test']])],
+                             ignore_index=True)
+       record_table.to_csv(record_path, index=False)
+       print("Saved best record to:", record_path)
 
     def _save_checkpoint(self, epoch, save_best=False):
         state = {
@@ -184,10 +200,16 @@ class BasePipeline(object):
             self.best_recorder['test'].update(log)
 
     def _print_best(self):
-        print('Best results (w.r.t {}) in validation set:'.format(self.args["monitor_metric"]))
-        for key, value in self.best_recorder['val'].items():
-            print('\t{:15s}: {}'.format(str(key), value))
+    # CRA 的监控指标在 cfgs['stat']['monitor']['metric']
+      mm = self.cfgs.get("stat", {}).get("monitor", {}).get("metric", "acc")
+      print(f"Best results (w.r.t {mm}) in validation/test set:")
 
-        print('Best results (w.r.t {}) in test set:'.format(self.args["monitor_metric"]))
-        for key, value in self.best_recorder['test'].items():
-            print('\t{:15s}: {}'.format(str(key), value))
+    # 这里 best_recorder 里存的是 val/test 两份最优记录
+      try:
+         val_best = self.best_recorder.get("val", {})
+         test_best = self.best_recorder.get("test", {})
+         print("Val best:", val_best)
+         print("Test best:", test_best)
+      except Exception as e:
+         print("Best recorder print failed:", repr(e))
+
